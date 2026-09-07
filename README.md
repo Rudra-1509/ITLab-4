@@ -89,6 +89,30 @@ docker compose -f docker-compose.backend.yml up --build
 
 ---
 
+## Running the Frontend Client (TicketPulse)
+
+The frontend is built with React 18, TypeScript, Vite, Tailwind CSS, React Router v6, Recharts, and Lucide React.
+
+```bash
+# Option 1: From the root directory
+npm run start:frontend
+
+# Option 2: From the frontend directory
+cd frontend
+npm install
+npm run dev
+```
+
+Navigate to:
+**`http://localhost:3000`**
+
+### Demo Credentials:
+- **Audience:** `user@example.com` / `password123`
+- **Organizer:** `organizer@example.com` / `password123`
+- **Admin:** `admin@example.com` / `password123`
+
+---
+
 ## Swagger API Documentation
 
 Once started, navigate to:

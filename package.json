@@ -16,6 +16,8 @@
     "start:pricing": "ts-node ./backend/services/pricing/src/index.ts",
     "start:analytics": "ts-node ./backend/services/analytics/src/index.ts",
     "start:notifications": "ts-node ./backend/services/notifications/src/index.ts",
+    "start:frontend": "npm run dev --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend",
     "test": "jest --runInBand --detectOpenHandles"
   },
   "dependencies": {
