@@ -1,0 +1,51 @@
+{
+  "name": "online-event-ticketing-platform",
+  "version": "1.0.0",
+  "description": "Backend for Online Event Ticketing Platform with microservices, Redis Streams, Prisma, and Docker",
+  "main": "backend/gateway/src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "prisma:generate": "prisma generate --schema=./backend/prisma/schema.prisma",
+    "prisma:db:push": "prisma db push --schema=./backend/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate deploy --schema=./backend/prisma/schema.prisma",
+    "seed": "ts-node ./backend/prisma/seed.ts",
+    "start:gateway": "ts-node ./backend/gateway/src/index.ts",
+    "start:auth": "ts-node ./backend/services/auth/src/index.ts",
+    "start:events": "ts-node ./backend/services/events/src/index.ts",
+    "start:bookings": "ts-node ./backend/services/bookings/src/index.ts",
+    "start:pricing": "ts-node ./backend/services/pricing/src/index.ts",
+    "start:analytics": "ts-node ./backend/services/analytics/src/index.ts",
+    "start:notifications": "ts-node ./backend/services/notifications/src/index.ts",
+    "test": "jest --runInBand --detectOpenHandles"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "axios": "^1.7.7",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.4",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.9",
+    "@types/qrcode": "^1.5.5",
+    "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.6",
+    "jest": "^29.7.0",
+    "prisma": "^5.19.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

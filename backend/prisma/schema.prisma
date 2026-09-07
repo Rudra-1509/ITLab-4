@@ -1,0 +1,194 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+enum Role {
+  AUDIENCE
+  ORGANIZER
+  ADMIN
+}
+
+enum EventCategory {
+  CONCERT
+  THEATER
+  SPORTS
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  SOLD
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PAYMENT_PROCESSING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(AUDIENCE)
+  createdAt    DateTime      @default(now())
+  sessions     UserSession[]
+  events       Event[]       @relation("OrganizerEvents")
+  bookings     Booking[]
+  tickets      Ticket[]
+  notifications Notification[]
+}
+
+model UserSession {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName String?
+  userAgent  String?
+  loginTime  DateTime  @default(now())
+  lastActive DateTime  @default(now())
+  expiresAt  DateTime?
+  revoked    Boolean   @default(false)
+}
+
+model Event {
+  id            String        @id @default(uuid())
+  organizerId   String
+  organizer     User          @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  category      EventCategory
+  venue         String
+  city          String
+  date          DateTime
+  startTime     String
+  endTime       String
+  imageUrl      String?
+  totalCapacity Int
+  ticketsSold   Int           @default(0)
+  basePrice     Float
+  status        EventStatus   @default(UPCOMING)
+  createdAt     DateTime      @default(now())
+  seats         Seat[]
+  bookings      Booking[]
+  tickets       Ticket[]
+  pricingRules  PricingRule[]
+}
+
+model Seat {
+  id           String        @id @default(uuid())
+  eventId      String
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatNumber   String
+  row          String
+  section      String
+  status       SeatStatus    @default(AVAILABLE)
+  price        Float
+  bookingSeats BookingSeat[]
+  tickets      Ticket[]
+
+  @@unique([eventId, seatNumber])
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId      String
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  totalAmount  Float
+  status       BookingStatus @default(PENDING_PAYMENT)
+  createdAt    DateTime      @default(now())
+  bookingSeats BookingSeat[]
+  tickets      Ticket[]
+}
+
+model BookingSeat {
+  id        String  @id @default(uuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seatId    String
+  seat      Seat    @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  price     Float
+
+  @@unique([bookingId, seatId])
+}
+
+model Ticket {
+  id         String       @id @default(uuid())
+  bookingId  String
+  booking    Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId    String
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatId     String
+  seat       Seat         @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  ticketCode String       @unique
+  qrCode     String
+  price      Float
+  status     TicketStatus @default(VALID)
+  createdAt  DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PricingRule {
+  id               String  @id @default(uuid())
+  eventId          String
+  event            Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ruleType         String
+  threshold        Float
+  percentageChange Float
+  active           Boolean @default(true)
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  eventId   String?
+  userId    String?
+  eventType String
+  amount    Float?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+model ProcessedEvent {
+  id          String   @id @default(uuid())
+  eventId     String
+  consumer    String
+  processedAt DateTime @default(now())
+
+  @@unique([eventId, consumer])
+}
