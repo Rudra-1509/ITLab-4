@@ -84,7 +84,38 @@ npm run start:notifications
 ### Option B: Docker Compose Deployment (Recommended)
 Build and run the entire platform with PostgreSQL and Redis containers:
 ```bash
-docker compose -f docker-compose.backend.yml up --build
+docker compose -f docker-compose.backend.yml up -d --build
+```
+
+Wait for all services to be healthy (approximately 30 seconds):
+```bash
+docker compose -f docker-compose.backend.yml ps
+```
+
+Then initialize the database schema and seed demo data:
+```bash
+# Option 1: Using Docker container with network access (Recommended)
+docker run --rm --network itlab-4_default \
+  -v $(pwd):/app \
+  -w /app \
+  -e "DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ticketing_db?schema=public" \
+  -e "JWT_SECRET=super-secret-jwt-key-change-in-production-12345" \
+  node:20 bash -c "npm install && npx prisma db push --schema=./backend/prisma/schema.prisma --skip-generate && npm run seed"
+
+# Option 2: Using host machine (requires local PostgreSQL connection)
+npm install
+npx prisma db push --schema=./backend/prisma/schema.prisma
+npm run seed
+```
+
+View container logs to verify all services are running correctly:
+```bash
+docker compose -f docker-compose.backend.yml logs --tail=50
+```
+
+To stop all services:
+```bash
+docker compose -f docker-compose.backend.yml down
 ```
 
 ---
@@ -138,7 +169,8 @@ npm test
 ---
 
 ## Architectural Documentation
-- [api-contract.md](file:///c:/Users/RUDRANIL%20MONDAL/Documents/Web%20developement/Projects/7th%20Sem/Project4/docs/api-contract.md)
-- [architecture.md](file:///c:/Users/RUDRANIL%20MONDAL/Documents/Web%20developement/Projects/7th%20Sem/Project4/docs/architecture.md)
-- [event-flow.md](file:///c:/Users/RUDRANIL%20MONDAL/Documents/Web%20developement/Projects/7th%20Sem/Project4/docs/event-flow.md)
-- [database.md](file:///c:/Users/RUDRANIL%20MONDAL/Documents/Web%20developement/Projects/7th%20Sem/Project4/docs/database.md)
+- [docs/api-contract.md](docs/api-contract.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/event-flow.md](docs/event-flow.md)
+- [docs/database.md](docs/database.md)
+
