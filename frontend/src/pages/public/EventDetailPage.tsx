@@ -69,10 +69,10 @@ export const EventDetailPage: React.FC = () => {
     }
   };
 
-  const refreshSeats = async (eventId?: string) => {
+  const refreshSeats = async (eventId?: string, silent = false) => {
     const targetId = eventId || id;
     if (!targetId) return;
-    setIsLoadingSeats(true);
+    if (!silent) setIsLoadingSeats(true);
     try {
       const res = await eventsApi.getEventSeats(targetId);
       setSeats(res.seats);
@@ -80,7 +80,7 @@ export const EventDetailPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to refresh seats:', err);
     } finally {
-      setIsLoadingSeats(false);
+      if (!silent) setIsLoadingSeats(false);
     }
   };
 
@@ -248,7 +248,7 @@ export const EventDetailPage: React.FC = () => {
 
         <SeatMap
           seats={seats}
-          onRefreshSeats={() => refreshSeats(event.id)}
+          onRefreshSeats={(silent?: boolean) => refreshSeats(event.id, silent)}
           isLoading={isLoadingSeats}
         />
       </section>

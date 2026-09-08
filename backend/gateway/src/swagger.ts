@@ -228,6 +228,31 @@ export const swaggerDocument = {
         }
       }
     },
+    '/api/bookings/unlock': {
+      post: {
+        summary: 'Immediately unlock a seat in Redis',
+        security: [{ BearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  eventId: { type: 'string' },
+                  seatId: { type: 'string' }
+                },
+                required: ['eventId', 'seatId']
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Seat unlocked successfully' },
+          '403': { description: 'Forbidden - Lock not held by user' }
+        }
+      }
+    },
     '/api/bookings': {
       post: {
         summary: 'Create pending booking from locked seats',

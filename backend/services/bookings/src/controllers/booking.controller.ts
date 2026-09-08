@@ -14,6 +14,16 @@ export class BookingController {
     }
   }
 
+  static async unlockSeat(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const validated = LockSeatSchema.parse(req.body);
+      const result = await BookingService.unlockSeat(req.user!.userId, validated, req.user?.role);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createBooking(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const validated = CreateBookingSchema.parse(req.body);

@@ -151,4 +151,53 @@ describe('CRITICAL CONCURRENCY TEST: Redis Seat Locking', () => {
     expect(conflictResponse.error.code).toBe('SEAT_UNAVAILABLE');
     expect(conflictResponse.error.message).toContain('locked or sold');
   });
+
+  it('should reject unlocking a seat held by another user with 403 Forbidden', async () => {
+    // Check which user holds the lock
+    const lockKey = getSeatLockKey(dummyEventId, dummySeatId);
+    const lockOwner = await redis.get(lockKey);
+    expect(lockOwner).toBeTruthy();
+
+    const nonOwnerToken = lockOwner === dummyUserIdA ? userBToken : userAToken;
+
+    const forbiddenRes = await request(bookingApp)
+      .post('/api/bookings/unlock')
+      .set('Authorization', `Bearer ${nonOwnerToken}`)
+      .send({ eventId: dummyEventId, seatId: dummySeatId });
+
+    expect(forbiddenRes.status).toBe(403);
+    expect(forbiddenRes.body.error).toBeDefined();
+    expect(forbiddenRes.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('should immediately unlock a seat when unselected and allow another user to lock it instantly', async () => {
+    const lockKey = getSeatLockKey(dummyEventId, dummySeatId);
+    const lockOwner = await redis.get(lockKey);
+    const ownerToken = lockOwner === dummyUserIdA ? userAToken : userBToken;
+    const nextUserToken = lockOwner === dummyUserIdA ? userBToken : userAToken;
+    const nextUserId = lockOwner === dummyUserIdA ? dummyUserIdB : dummyUserIdA;
+
+    // 1. Owner unselects / unlocks the seat
+    const unlockRes = await request(bookingApp)
+      .post('/api/bookings/unlock')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ eventId: dummyEventId, seatId: dummySeatId });
+
+    expect(unlockRes.status).toBe(200);
+    expect(unlockRes.body.message).toContain('unlocked successfully');
+
+    // Verify Redis lock is gone immediately
+    const remainingLock = await redis.get(lockKey);
+    expect(remainingLock).toBeNull();
+
+    // 2. Next user can now immediately lock the same seat without waiting for timer to expire
+    const relockRes = await request(bookingApp)
+      .post('/api/bookings/lock')
+      .set('Authorization', `Bearer ${nextUserToken}`)
+      .send({ eventId: dummyEventId, seatId: dummySeatId });
+
+    expect(relockRes.status).toBe(200);
+    expect(relockRes.body.lock).toBeDefined();
+    expect(relockRes.body.lock.userId).toBe(nextUserId);
+  });
 });

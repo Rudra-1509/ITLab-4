@@ -60,6 +60,47 @@ export class BookingService {
   }
 
   /**
+   * Instantly unlock a seat in Redis
+   */
+  static async unlockSeat(userId: string, input: LockSeatInput, userRole?: string) {
+    const { eventId, seatId } = input;
+
+    const lockKey = getSeatLockKey(eventId, seatId);
+    const lockOwner = await redis.get(lockKey);
+
+    // If there is no active lock, return success idempotently
+    if (!lockOwner) {
+      return {
+        message: 'Seat is not locked',
+        unlocked: { eventId, seatId }
+      };
+    }
+
+    // Only the user who locked the seat (or an ADMIN) can unlock it
+    if (lockOwner !== userId && userRole !== 'ADMIN') {
+      throw new ForbiddenError('You do not hold the lock for this seat', 'FORBIDDEN');
+    }
+
+    // Delete the Redis key
+    await redis.del(lockKey);
+
+    // Publish stream event
+    await publishEvent('SEAT_UNLOCKED', 'booking-service', {
+      eventId,
+      seatId,
+      userId
+    });
+
+    return {
+      message: 'Seat unlocked successfully',
+      unlocked: {
+        eventId,
+        seatId
+      }
+    };
+  }
+
+  /**
    * Create Booking from locked seats
    */
   static async createBooking(userId: string, input: CreateBookingInput) {

@@ -8,6 +8,8 @@ export const ticketRouter = Router();
 
 // Booking routes
 bookingRouter.post('/lock', authenticateToken, BookingController.lockSeat);
+bookingRouter.post('/unlock', authenticateToken, BookingController.unlockSeat);
+bookingRouter.delete('/lock', authenticateToken, BookingController.unlockSeat);
 bookingRouter.post('/', authenticateToken, BookingController.createBooking);
 bookingRouter.get('/my', authenticateToken, BookingController.getUserBookings);
 bookingRouter.get('/:bookingId', authenticateToken, BookingController.getBookingById);

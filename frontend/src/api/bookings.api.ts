@@ -90,6 +90,25 @@ export const bookingsApi = {
     }
   },
 
+  async unlockSeat(payload: LockSeatPayload): Promise<{ message: string; unlocked?: { eventId: string; seatId: string } }> {
+    try {
+      const { data } = await apiClient.post('/bookings/unlock', payload);
+      return data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        console.warn('[API Bookings] Backend offline, simulating Redis seat unlock');
+        return {
+          message: 'Seat unlocked successfully',
+          unlocked: {
+            eventId: payload.eventId,
+            seatId: payload.seatId,
+          },
+        };
+      }
+      throw error;
+    }
+  },
+
   async createBooking(payload: CreateBookingPayload): Promise<CreateBookingResponse> {
     try {
       const { data } = await apiClient.post<CreateBookingResponse>('/bookings', payload);

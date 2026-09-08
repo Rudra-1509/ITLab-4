@@ -10,7 +10,7 @@ import { formatCountdown, formatCurrency } from '../../utils/formatters';
 
 export interface SeatMapProps {
   seats: Seat[];
-  onRefreshSeats: () => void;
+  onRefreshSeats: (silent?: boolean) => void | Promise<void>;
   isLoading?: boolean;
 }
 
@@ -25,6 +25,8 @@ export const SeatMap: React.FC<SeatMapProps> = ({ seats, onRefreshSeats, isLoadi
     unitPrice,
     totalPrice,
   } = useBooking();
+
+  const [unlockedSeatIds, setUnlockedSeatIds] = React.useState<Set<string>>(new Set());
 
   // Group seats by row (A, B, C, D, E...)
   const seatsByRow = useMemo(() => {
@@ -49,15 +51,29 @@ export const SeatMap: React.FC<SeatMapProps> = ({ seats, onRefreshSeats, isLoadi
   const handleSeatClick = async (seat: Seat) => {
     const isAlreadySelected = selectedSeats.some((s) => s.id === seat.id);
     if (isAlreadySelected) {
-      deselectSeat(seat.id);
+      // Optimistically treat as available immediately to prevent any flicker
+      setUnlockedSeatIds((prev) => new Set(prev).add(seat.id));
+      await deselectSeat(seat.id);
+      await onRefreshSeats(true);
+      setUnlockedSeatIds((prev) => {
+        const next = new Set(prev);
+        next.delete(seat.id);
+        return next;
+      });
     } else {
-      await lockSeat(seat);
+      const ok = await lockSeat(seat);
+      if (ok) {
+        await onRefreshSeats(true);
+      }
     }
   };
 
   const getSeatStatus = (seat: Seat): SeatStatus => {
     if (selectedSeats.some((s) => s.id === seat.id)) {
       return 'SELECTED';
+    }
+    if (unlockedSeatIds.has(seat.id)) {
+      return 'AVAILABLE';
     }
     return seat.status;
   };
@@ -172,7 +188,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({ seats, onRefreshSeats, isLoadi
           </div>
 
           <button
-            onClick={onRefreshSeats}
+            onClick={() => onRefreshSeats(false)}
             disabled={isLoading}
             className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium ml-2 transition-colors disabled:opacity-50"
           >

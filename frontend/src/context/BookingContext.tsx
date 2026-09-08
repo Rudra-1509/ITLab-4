@@ -13,8 +13,8 @@ interface BookingContextType {
   lockSecondsRemaining: number;
   isLocked: boolean;
   lockSeat: (seat: Seat) => Promise<boolean>;
-  deselectSeat: (seatId: string) => void;
-  clearSelection: () => void;
+  deselectSeat: (seatId: string) => Promise<boolean>;
+  clearSelection: () => Promise<void>;
   setLockExpiredCallback: (cb: () => void) => void;
   unitPrice: number;
   totalPrice: number;
@@ -44,11 +44,25 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLockExpiredCallbackState(() => cb);
   }, []);
 
-  const clearSelection = useCallback(() => {
+  const clearSelection = useCallback(async () => {
+    if (selectedEvent && selectedSeats.length > 0) {
+      try {
+        await Promise.allSettled(
+          selectedSeats.map((s) =>
+            bookingsApi.unlockSeat({
+              eventId: selectedEvent.id,
+              seatId: s.id,
+            })
+          )
+        );
+      } catch (err) {
+        console.warn('[BookingContext] Failed to release locks during clearSelection:', err);
+      }
+    }
     setSelectedSeats([]);
     setLockExpiresAt(null);
     setLockSecondsRemaining(0);
-  }, []);
+  }, [selectedEvent, selectedSeats]);
 
   // Countdown timer: updates every 1000ms
   useEffect(() => {
@@ -74,6 +88,36 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearInterval(interval);
   }, [lockExpiresAt, lockExpiredCallback, clearSelection, showToast]);
 
+  const deselectSeat = async (seatId: string): Promise<boolean> => {
+    const targetSeat = selectedSeats.find((s) => s.id === seatId);
+
+    // Optimistically update local selected seats state
+    setSelectedSeats((prev) => {
+      const next = prev.filter((s) => s.id !== seatId);
+      if (next.length === 0) {
+        setLockExpiresAt(null);
+        setLockSecondsRemaining(0);
+      }
+      return next;
+    });
+
+    if (selectedEvent) {
+      try {
+        await bookingsApi.unlockSeat({
+          eventId: selectedEvent.id,
+          seatId: seatId,
+        });
+        if (targetSeat) {
+          showToast(`Seat ${targetSeat.seatNumber} unlocked.`, 'info');
+        }
+        return true;
+      } catch (err) {
+        console.warn('[BookingContext] Failed to unlock seat on server:', err);
+      }
+    }
+    return true;
+  };
+
   const lockSeat = async (seat: Seat): Promise<boolean> => {
     if (!selectedEvent) {
       showToast('Please select an event first.', 'error');
@@ -82,7 +126,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Check if already selected -> deselect
     if (selectedSeats.some((s) => s.id === seat.id)) {
-      deselectSeat(seat.id);
+      await deselectSeat(seat.id);
       return false;
     }
 
@@ -109,17 +153,6 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast(msg, 'error');
       return false;
     }
-  };
-
-  const deselectSeat = (seatId: string) => {
-    setSelectedSeats((prev) => {
-      const next = prev.filter((s) => s.id !== seatId);
-      if (next.length === 0) {
-        setLockExpiresAt(null);
-        setLockSecondsRemaining(0);
-      }
-      return next;
-    });
   };
 
   const unitPrice = pricing?.current_price || selectedEvent?.basePrice || 0;
